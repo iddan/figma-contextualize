@@ -69,7 +69,7 @@ function handleSendSelected() {
 }
 
 figma.showUI(__html__);
-figma.ui.resize(280, 250);
+figma.ui.resize(300, 250);
 figma.ui.postMessage({
   type: "topLevelNodes",
   payload: getTopLevelNodes()
