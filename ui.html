@@ -1,0 +1,107 @@
+<html>
+  <body>
+    <form>
+      <label>Background:</label>
+      <select name="background" id="background-select"></select
+      ><button type="button" id="use-selected">Use selected</button>
+      <div style="color: red" id="selected-error"></div>
+      <p>
+        <i>Selected <span id="selected-count">0</span> nodes to duplicate</i>
+      </p>
+      <h3>Position in background</h3>
+      <p>
+        <label>Top:</label>
+        <input name="position-top" type="number" value="0" />
+      </p>
+      <p>
+        <label>Left:</label>
+        <input name="position-left" type="number" value="0" />
+      </p>
+      <button type="submit">Go</button>
+    </form>
+    <script>
+      /** @todo move to external file bundled with Webpack */
+      function postMessage(message) {
+        parent.postMessage({ pluginMessage: message }, "*");
+      }
+      function emptyChildNodes(element) {
+        for (const childNode of element.childNodes) {
+          childNode.remove();
+        }
+      }
+      function updateBackgroundOptions(topLevelNodes) {
+        const backgroundSelect = document.querySelector("#background-select");
+        emptyChildNodes(backgroundSelect);
+        for (const topLevelNode of topLevelNodes) {
+          const optionElement = document.createElement("option");
+          optionElement.value = topLevelNode.id;
+          optionElement.appendChild(document.createTextNode(topLevelNode.name));
+          backgroundSelect.appendChild(optionElement);
+        }
+      }
+      function updateSelected(selectedCount) {
+        const element = document.querySelector("#selected-count");
+        emptyChildNodes(element);
+        element.appendChild(document.createTextNode(selectedCount));
+      }
+      function handleSingleSelected(payload, error) {
+        if (error) {
+          const selectedError = document.querySelector("#selected-error");
+          selectedError.appendChild(document.createTextNode(error));
+        } else {
+          const backgroundSelect = document.querySelector("#background-select");
+          backgroundSelect.value = payload;
+        }
+      }
+      function handleMessage({ type, payload, error }) {
+        switch (type) {
+          case "topLevelNodes": {
+            updateBackgroundOptions(payload);
+            break;
+          }
+          case "selectedCount": {
+            updateSelected(payload);
+            break;
+          }
+          case "single-selected": {
+            handleSingleSelected(payload, error);
+            break;
+          }
+          default: {
+            console.warn("[UI] Unexpected message type: ", type);
+          }
+        }
+      }
+      function handleLoad() {
+        const form = document.forms[0];
+        form.addEventListener("submit", event => {
+          event.preventDefault();
+          const { elements } = event.target;
+          postMessage({
+            type: "go",
+            payload: {
+              positionTop: Number(elements["position-top"].value),
+              positionLeft: Number(elements["position-left"].value),
+              background: elements["background"].value
+            }
+          });
+        });
+        const useSelectedButton = document.querySelector("#use-selected");
+        useSelectedButton.addEventListener("click", () => {
+          const selectedError = document.querySelector("#selected-error");
+          emptyChildNodes(selectedError);
+          postMessage({ type: "send-single-selected", payload: null });
+        });
+      }
+      onmessage = event => {
+        const { pluginMessage } = event.data;
+        if (typeof event.data.pluginMessage !== "object") {
+          console.warn("[UI] Invalid message:", pluginMessage);
+          return;
+        }
+        handleMessage(pluginMessage);
+      };
+      window.addEventListener("load", handleLoad);
+    </script>
+  </body>
+</html>
